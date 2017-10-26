@@ -9,6 +9,7 @@ HOST = '192.168.42.2'
 PORT = 5555
 UUID = uuid.uuid4().hex
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 #var GPIO
 connected = False
 registered = False
@@ -35,6 +36,8 @@ LCD_LINE_1 = 0x80
 LCD_LINE_2 = 0xC0
 LCD_E_PULSE = 0.0005
 LCD_E_DELAY = 0.0005
+LCD_text_1 = " Alarm is off "
+LCD_text_2 = " Not connected "
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)  # Use BCM GPIO numbers
@@ -121,8 +124,9 @@ def lcd_string(message, line):
     for i in range(LCD_WIDTH):
         lcd_byte(ord(message[i]), LCD_CHR)
 
-def led_on(x):
-    GPIO.output(x, GPIO.HIGH)
+        
+def led_on(pin):
+    GPIO.output(pin, GPIO.HIGH)
 
 
 def led_off(pin):
@@ -180,7 +184,6 @@ def gpio_mainloop():
             alarm_trigger()
 
 
-
 def get_time():
     return datetime.datetime.now().strftime('%d-%m-%Y %X')
 
@@ -216,12 +219,14 @@ def socket_write(data: str, data_header: str):
     """
     message = str(UUID) + "," + data_header + "," + data
     if debug: print("{} - Client send: {}".format(get_time(), message))
+      
     try:
         client_socket.send(message.encode('ascii'))
     except ConnectionResetError or ConnectionAbortedError:
         if debug: print("{} - Connection has been terminated by the server.".format(get_time()))
         lcd_string(' Not Connected', LCD_LINE_2)
         exit()
+    client_socket.send(message.encode('ascii'))
 
 def socket_read():
     data = None
@@ -229,7 +234,6 @@ def socket_read():
         data = client_socket.recv(2048)
     except ConnectionResetError or ConnectionAbortedError:
         if debug: print("{} - Connection has been terminated by the server.".format(get_time()))
-        lcd_string(' Not Connected', LCD_LINE_2)
         exit()
     data = data.decode('utf-8').strip().split(',')
     if debug: print("{} - Client received: {}".format(get_time(), data))
@@ -252,6 +256,7 @@ if __name__ == '__main__':
         lcd_string(' Sytem is off', LCD_LINE_1)
         lcd_string(' Connected', LCD_LINE_2)
         start_new_thread(gpio_mainloop, ())
+
         while True:
             socket_read()
     finally:
