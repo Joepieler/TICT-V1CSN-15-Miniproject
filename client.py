@@ -15,7 +15,7 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # var GPIO
 run = True
-connected = False
+connected_to_server = False
 registered = False
 debug = True
 last_ping = 0
@@ -48,7 +48,7 @@ LCD_LINE_2 = 0xC0
 LCD_E_PULSE = 0.0005
 LCD_E_DELAY = 0.0005
 LCD_text_1 = " Alarm is off "
-LCD_text_2 = " Not connected "
+LCD_text_2 = " Not connected_to_server "
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)  # Use BCM GPIO numbers
@@ -172,6 +172,7 @@ def alarm_system_off():
     time.sleep(0.5)
     pygame.mixer.music.stop()
 
+
 def flikker(x):
     while True:
         led_on(x)
@@ -184,13 +185,11 @@ def flikker(x):
             break
 
 
-
 def alarm_trigger():
     global server_disable_alarm
     alarm_tripped = True
     led_on(13)
     while system_on:
-
         if button(6):
             break
         if server_disable_alarm:
@@ -229,8 +228,6 @@ def gpio_mainloop():
     GPIO.output(13, 0)
 
     while True:
-
-
         if button(6) and system_on == False:
             alarm_system_on()
 
@@ -245,8 +242,6 @@ def gpio_mainloop():
         if button(5) and system_on == True:
             alarm_trigger_time = time.time()
             alarm_trigger()
-            print (system_on)
-
         lcd_string(LCD_text_1, LCD_LINE_1)
         lcd_string(LCD_text_2, LCD_LINE_2)
 
@@ -280,6 +275,8 @@ def parse_socket_data(data: str):
             alarm_trigger()
     elif data == "ALRM_STATUS":
         pass
+    elif data == "ALRM_TRIP":
+        alarm_trigger()
     elif data == "ALRM_STOP":
         alarm_trigger_off()
     elif data == "ALRM_ON":
@@ -306,6 +303,7 @@ def socket_write(data: str, data_header: str):
         return[1] = data_header
         return[2] = data
     """
+    global LCD_text_2
     message = str(UUID) + "," + data_header + "," + data
     if debug: print("{} - Client send: {}".format(get_time(), message))
 
@@ -313,7 +311,6 @@ def socket_write(data: str, data_header: str):
         client_socket.send(message.encode('ascii'))
     except ConnectionResetError or ConnectionAbortedError:
         if debug: print("{} - Connection has been terminated by the server.".format(get_time()))
-        global LCD_text_1
         LCD_text_2 = ' Not Connected'
         exit()
     client_socket.send(message.encode('ascii'))
@@ -339,7 +336,7 @@ if __name__ == '__main__':
     try:
         try:
             client_socket.connect((HOST, PORT))
-            connected = True
+            connected_to_server = True
         except socket.error as e:
             if debug: print("{} - Socket error {}".format(get_time(), e))
             exit()
